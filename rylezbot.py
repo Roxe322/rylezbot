@@ -17,13 +17,12 @@ class BotHandler:
         result_json = resp.json()['result']
         return result_json
 
-    def get_last_update(self):
-        get_result = self.get_updates()
+    def get_last_update(self, offset=None, timeout=1):
+        get_result = self.get_updates(offset, timeout)
 
         if len(get_result) > 0:
             last_update = get_result[-1]
         else:
-            # last_update = get_result[len(get_result)]
             last_update = None
 
         return last_update
@@ -100,9 +99,9 @@ def main():
                 stats.clear()
                 continue
 
-            bot.get_updates(new_offset)
+            # bot.get_updates(new_offset)
 
-            last_update = bot.get_last_update()
+            last_update = bot.get_last_update(new_offset)
 
             if isinstance(last_update, list):
                 last_update_id = last_update[-1]['update_id']
