@@ -2,7 +2,7 @@
 
 import requests
 import time
-# import os
+import os
 
 
 class BotHandler:
@@ -57,8 +57,7 @@ class BotHandler:
         return resp
 
 
-# bot = BotHandler(os.environ['TOKEN'])
-bot = BotHandler('569152816:AAH9auAlM_JTfuohTPKWzk_wc7JQp-rQAzY')
+bot = BotHandler(os.environ['TOKEN'])
 stats = dict()
 users = dict()
 limit = 5
