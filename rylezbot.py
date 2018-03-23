@@ -128,7 +128,7 @@ def main():
                     if message_text.startswith('/stats'):
                         stats_text = u'*Статистика по отправителям стикеров:*\n\n'
                         i = 1
-                        for key, value in sorted(stats.iteritems(), key=lambda (k,v): (v,k), reverse=True):
+                        for key, value in sorted(stats, key=stats.get, reverse=True):
                             stats_text += u"{}. {} — {}/{} стикеров".format(i, users[key], value, limit)
                             if limit - value <= 0:
                                 stats_text += u' (ограничен)'
