@@ -11,6 +11,12 @@ class BotHandler:
         self.token = token
         self.api_url = "https://api.telegram.org/bot{}/".format(token)
 
+    def get_me(self):
+        method = 'getMe'
+        resp = requests.get(self.api_url + method)
+        result_json = resp.json()['result']
+        return result_json
+
     def get_updates(self, offset=None, timeout=1):
         method = 'getUpdates'
         params = {'timeout': timeout, 'offset': offset}
@@ -25,8 +31,10 @@ class BotHandler:
             return get_result[0]
         return None
 
-    def send_message(self, chat_id, text):
-        params = {'chat_id': chat_id, 'text': text, 'parse_mode': 'markdown'}
+    def send_message(self, chat_id, text, parse_mode='markdown', reply_to_message_id=None):
+        params = {'chat_id': chat_id, 'text': text, 'parse_mode': parse_mode}
+        if not reply_to_message_id is None:
+            params['reply_to_message_id'] = reply_to_message_id
         method = 'sendMessage'
         resp = requests.post(self.api_url + method, params)
         return resp
@@ -55,44 +63,47 @@ class BotHandler:
 
 
 bot = BotHandler(os.environ['TOKEN'])
+bot_info = None
+# chats = dict()
 stats = dict()
 users = dict()
 limit = 5
 is_restricting = False
+is_chatbot = False
 admins = [145967250, 126751055, 172210439]
 
 
 def restricting_mode(chat_id, message):
     author = message['from']
     sticker = message['sticker']
-    if 'set_name' in sticker and sticker['set_name'] != u'uxuitools':
-        users[author['id']] = author['first_name']
-        if 'username' in author:
-            author_name = "@" + author['username']
-        elif 'first_name' in author:
-            author_name = author['first_name']
+    users[author['id']] = author['first_name']
+    if 'username' in author:
+        author_name = "@" + author['username']
+    elif 'first_name' in author:
+        author_name = author['first_name']
 
-        if not author['id'] in stats:
-            stats[author['id']] = 1
-        else:
-            stats[author['id']] += 1
-
-        if limit - stats[author['id']] > 0:
-            # bot.send_message(chat_id, u"У {} осталось {} сообщений".format(author_name, limit - stats[author['id']]))
-            if limit - stats[author['id']] == 1:
-                bot.send_message(chat_id, u"Будь осторожен, {}, ведь у тебя остался всего 1 стикер!".format(author_name))
-        else:
-            bot.restrict_chat_member(chat_id, author['id'], 604800, True, True, False, True)
-            bot.send_message(chat_id, u"{} теперь не может присылать стикеры неделю!".format(author_name))
+    if not author['id'] in stats:
+        stats[author['id']] = 1
     else:
-        bot.send_message(chat_id, u"РАССТРЕЛЯТЬ")
+        stats[author['id']] += 1
+
+    if limit - stats[author['id']] > 0:
+        # bot.send_message(chat_id, u"У {} осталось {} сообщений".format(author_name, limit - stats[author['id']]))
+        if limit - stats[author['id']] == 1:
+            bot.send_message(chat_id, u"Будь осторожен, {}, ведь у тебя остался всего 1 стикер!".format(author_name))
+    else:
+        bot.restrict_chat_member(chat_id, author['id'], 604800, True, True, False, True)
+        bot.send_message(chat_id, u"{} теперь не может присылать стикеры неделю!".format(author_name))
+
 
 
 def main():
     new_offset = None
     was_previous_sticker = False
 
-    global limit, is_restricting
+    global limit, is_restricting, is_chatbot
+
+    bot_info = bot.get_me()
 
     while True:
         t = time.gmtime()
@@ -100,12 +111,10 @@ def main():
             stats.clear()
             continue
 
-        # bot.get_updates(new_offset)
-
         last_update = bot.get_last_update(new_offset)
 
         if isinstance(last_update, list):
-            last_update_id = last_update[1]['update_id']
+            last_update_id = last_update[0]['update_id']
         elif last_update is None:
             continue
         else:
@@ -116,16 +125,54 @@ def main():
             author = message['from']
             chat_id = message['chat']['id']
 
+            if 'new_chat_members' in message:
+                if is_chatbot:
+                    bot.send_message(chat_id, u"Новые коммунисты подоспели! _Поздоровайся с дядюшкой Сталиным..._", reply_to_message_id=message['message_id'])
+                else:
+                    welcome_text = u"Привет! Я бот, который *ограничивает ракование стикерами*. Также я могу играть роль чатбота. "
+                    if is_restricting:
+                        welcome_text += u"Сейчас я в злом режиме, поэтому тебе доступно всего {} стикеров. *Будь осторожен!* ".format(limit)
+                    else:
+                        welcome_text += u"Сейчас я добрый, поэтому все стикеры, идущие подряд после одного *будут удаляться.* "
+                    bot.send_message(chat_id, welcome_text, reply_to_message_id=message['message_id'])
+
+            if 'left_chat_member' in message:
+                if is_chatbot:
+                    bot.send_message(chat_id, u"_Путен вышел из чата..._", reply_to_message_id=message['message_id'])
+
             if 'text' in message:
-                message_text = message['text']
+                message_text = message['text'].lower()
+
+                if is_chatbot:
+                    if ('reply_to_message' in message and
+                        'from' in message['reply_to_message'] and
+                        message['reply_to_message']['from']['id'] == bot_info['id']):
+                            if u"пошел нахуй" in message_text:
+                                bot.send_message(chat_id, u"сам иди, путен", reply_to_message_id=message['message_id'])
+                            else:
+                                bot.send_message(chat_id, u"пошел нахуй, пидор", reply_to_message_id=message['message_id'])
+
+                    elif u"сталин" in message_text:
+                        if (u"тупой"  in message_text or
+                            u"пидор"  in message_text or
+                            u"плохой" in message_text or
+                            u"ебанутый" in message_text):
+                            bot.send_message(chat_id, u"сам такой", reply_to_message_id=message['message_id'])
+                        else:
+                            bot.send_message(chat_id, u"Вызывали? Надеюсь, на расстрел Bohemian Coding", reply_to_message_id=message['message_id'])
+
+                    elif (u"коммунизм" in message_text or
+                          u"коммунист" in message_text or
+                          u"фигма"     in message_text):
+                        bot.send_message(chat_id, u"Молодца!", reply_to_message_id=message['message_id'])
 
                 if message_text.startswith('/start'):
                     bot.send_message(
                         chat_id,
-                        u'Бот, который поможет сохранить покой в чате.\n@handlerugbots\nПо вопросам обращайтесь к @handlerug'
+                        u'Бот, который поможет сохранить покой в чате (нет).\n@handlerugbots\nПо вопросам обращайтесь к @handlerug'
                     )
 
-                if message_text.startswith('/stats'):
+                elif message_text.startswith('/stats'):
                     if is_restricting:
                         stats_text = u'*Статистика по отправителям стикеров:*\n\n'
                         i = 1
@@ -141,7 +188,7 @@ def main():
                     else:
                         bot.send_message(chat_id, u'В данный момент *нет статистики*. Чтобы включить статистику, переключите бота в *ограничивающий режим*.')
 
-                if message_text.startswith('/limit'):
+                elif message_text.startswith('/limit'):
                     command_params = message_text.split()[1:]
                     if len(command_params) > 0:
                         if author['id'] in admins:
@@ -152,7 +199,7 @@ def main():
                     else:
                         bot.send_message(chat_id, u'В данный момент лимит стикеров установлен в *{}* стикеров.'.format(limit))
 
-                if message_text.startswith('/restricting_mode'):
+                elif message_text.startswith('/restricting_mode'):
                     command_params = message_text.split()[1:]
                     if len(command_params) > 0:
                         if author['id'] in admins:
@@ -170,15 +217,79 @@ def main():
                         else:
                             bot.send_message(chat_id, u'В данный момент ограничивающий режим *выключен*.')
 
+                elif message_text.startswith('/enable_chatbot'):
+                    command_params = message_text.split()[1:]
+                    if len(command_params) > 0:
+                        if author['id'] in admins:
+                            if command_params[0] == u'1':
+                                is_chatbot = True
+                                bot.send_message(chat_id, u'Режим чатбота *включен*.')
+                            elif command_params[0] == u'0':
+                                is_chatbot = False
+                                bot.send_message(chat_id, u'Режим чатбота *выключен*.')
+                        else:
+                            bot.send_message(chat_id, u'пошел нахуй')
+                    else:
+                        if is_chatbot:
+                            bot.send_message(chat_id, u'В данный момент режим чатбота *включен*.')
+                        else:
+                            bot.send_message(chat_id, u'В данный момент режим чатбота *выключен*.')
+
                 was_previous_sticker = False
 
             elif 'sticker' in message:
-                if is_restricting:
-                    restricting_mode(chat_id, message)
+                sticker = message['sticker']
+                if 'set_name' in sticker:
+                    if sticker['set_name'] != u"uxuitools":
+                        if is_restricting:
+                            restricting_mode(chat_id, message)
+                        else:
+                            if was_previous_sticker:
+                                bot.delete_message(chat_id, message['message_id'])
+                        was_previous_sticker = True
+                    else:
+                        sid = sticker['file_id']
+                        if sid == u"CAADAgADIwEAAk8RjgfLh5b5maYsTwI":       # Фигма красавица
+                            bot.send_message(chat_id, u"Не спорю", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADJAEAAk8RjgevCkhhmYjk0wI":     # Сделай через компоненты
+                            bot.send_message(chat_id, u"Символы круче", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADJQEAAk8RjgfATMinRl7uFgI":     # Xd ХУЕТА
+                            bot.send_message(chat_id, u"Photoshop ПАРАША", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADJgEAAk8RjgehM2IOMJjr5AI":     # Xd Выбор даунов 2018
+                            bot.send_message(chat_id, u"Ваши кечи и вигмы рядом не стоят", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADJwEAAk8RjgdeVJ-xqx7HawI":     # Как поставить шрифт на Фигму?
+                            bot.send_message(chat_id, u"Надо было фотошоп юзать", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADKAEAAk8Rjgen7wZfuvRNdAI":     # Скетч Зато у нас плагины
+                            bot.send_message(chat_id, u"Забыл про новое API Фигмы?", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADKQEAAk8Rjgfx03AK60ZlhQI":     # Ps Как не нужен?
+                            bot.send_message(chat_id, u"Я делаю сайты в фотошопе", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADKgEAAk8RjgdprZRwY6o37QI":     # Ps ПАРАША
+                            bot.send_message(chat_id, u"Xd ХУЕТА", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADKwEAAk8RjgcXRy75n55RtgI":     # Фигма Плагины не нужны
+                            bot.send_message(chat_id, u"А теперь вспомни про API Фигмы и скажи это еще раз", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADLAEAAk8Rjgfmz0Yq9fgQ_wI":     # Скетч Craft опять повис...
+                            bot.send_message(chat_id, u"Инвижон топ", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADLQEAAk8Rjgf3z3_xs08aogI":     # Скетч Макет 600 мегабайт
+                            bot.send_message(chat_id, u"В фигме все в облаке", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADLgEAAk8RjgcpBbljvHJzGQI":     # Ps Я UX/UI дизайнер
+                            bot.send_message(chat_id, u"Это не UI, это UX", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADLwEAAk8RjgcIlPRc2NZwYQI":     # Фигма Пропал интернет
+                            bot.send_message(chat_id, u"А теперь вспомни про автономность фотошопа", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADMAEAAk8RjgeWfxkOB5cAAWkC":    # Скетч На винде не работает!
+                            bot.send_message(chat_id, u"Фигма в браузере B)", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADMQEAAk8RjgeX9OVVKLRsiwI":     # Как конвертировать Ps в Скетч?
+                            bot.send_message(chat_id, u"Кароч ножимаешь на пунт файл и экспорт", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADMgEAAk8RjgfqvyWQOFWRTwI":     # Фигма круче всех
+                            bot.send_message(chat_id, u"Так держать!", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADMwEAAk8Rjgdi4xgAARIe2y8C":    # Скетч Делаю кнопки одного размера
+                            bot.send_message(chat_id, u"Вспомни про макеты 600Мб", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADNAEAAk8RjgeeUKe3SpVkKgI":     # В семье не без урода
+                            bot.send_message(chat_id, u"Инвижон топ", reply_to_message_id=message['message_id'])
+                        elif sid == u"CAADAgADNQEAAk8Rjgd8FOP2Fr17YwI":     # Автор @nerdfox
+                            pass
+
                 else:
-                    if was_previous_sticker:
-                        bot.delete_message(chat_id, message['message_id'])
-                was_previous_sticker = True
+                    bot.send_message(chat_id, u"РАССТРЕЛЯТЬ")
 
         new_offset = last_update_id + 1
 
