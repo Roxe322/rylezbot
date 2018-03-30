@@ -150,13 +150,13 @@ def main():
             if 'new_chat_members' in message:
                 if chats[chat_id].is_chatbot:
                     bot.send_message(chat_id, u"Новые коммунисты подоспели! _Поздоровайся с дядюшкой Сталиным..._", reply_to_message_id=message['message_id'])
-                else:
-                    welcome_text = u"Привет! Я бот, который *ограничивает ракование стикерами*. Также я могу играть роль чатбота. "
-                    if chats[chat_id].is_restricting:
-                        welcome_text += u"Сейчас я в злом режиме, поэтому тебе доступно всего {} стикеров. *Будь осторожен!* ".format(limit)
-                    else:
-                        welcome_text += u"Сейчас я добрый, поэтому все стикеры, идущие подряд после одного *будут удаляться.* "
-                    bot.send_message(chat_id, welcome_text, reply_to_message_id=message['message_id'])
+                # else:
+                #     welcome_text = u"Привет! Я бот, который *ограничивает ракование стикерами*. Также я могу играть роль чатбота. "
+                #     if chats[chat_id].is_restricting:
+                #         welcome_text += u"Сейчас я в злом режиме, поэтому тебе доступно всего {} стикеров. *Будь осторожен!* ".format(limit)
+                #     else:
+                #         welcome_text += u"Сейчас я добрый, поэтому все стикеры, идущие подряд после одного *будут удаляться.* "
+                #     bot.send_message(chat_id, welcome_text, reply_to_message_id=message['message_id'])
 
             if 'left_chat_member' in message:
                 if chats[chat_id].is_chatbot:
