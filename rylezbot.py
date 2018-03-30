@@ -93,6 +93,7 @@ bot = BotHandler(os.environ['TOKEN'])
 bot_info = None
 chats = dict()
 admins = [145967250, 126751055, 172210439]
+one_day = 86400
 
 
 def restricting_mode(chat_id, message):
@@ -164,6 +165,22 @@ def main():
 
             if 'text' in message:
                 message_text = message['text'].lower()
+
+                if (u"далер" in message_text or
+                    u"дaлеp" in message_text or
+                    u"дaлер" in message_text or
+                    u"далеp" in message_text or
+                    u"дaлep" in message_text or
+                    u"далер" in message_text or
+                    u"дилдер" in message_text or
+                    u"даунлер" in message_text or
+                    u"d a l e r" in message_text or
+                    u"daler" in message_text or
+                    u"dalertalk" in message_text or
+                    u"днолер" in message_text):
+                    bot.delete_message(chat_id, message['message_id'])
+                    # bot.restrict_chat_member(chat_id, author['id'], 3 * one_day, False, False, False, False)
+                    # bot.send_message(chat_id, u"Не надо так шутить, {}. Теперь ты не можешь писать сообщения 3 дня.".format(chats[chat_id].get_user_mention(author)), reply_to_message_id=message['message_id'])
 
                 if chats[chat_id].is_chatbot:
                     if ('reply_to_message' in message and
