@@ -216,8 +216,8 @@ def main():
                         stats_text = u'*Статистика по отправителям стикеров:*\n\n'
                         i = 1
                         # for key, value in sorted(stats, key=stats.get, reverse=True):
-                        for key, value in sorted(chats[chat_id].stats.iteritems(), key=operator.itemgetter(1), reverse=True):
-                        # for key, value in stats.items():
+                        # for key, value in sorted(chats[chat_id].stats.iteritems(), key=operator.itemgetter(1), reverse=True):
+                        for key, value in stats.items():
                             stats_text += u"{}. {} — {}/{} стикеров".format(i, chats[chat_id].users[key], value, chats[chat_id].limit)
                             if chats[chat_id].limit - value <= 0:
                                 stats_text += u' (ограничен)'
