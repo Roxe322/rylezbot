@@ -82,7 +82,10 @@ class Chat:
         self.is_chatbot = False
         self.is_ignoring_admins = True
         self.delete_msgs_from = False
+        self.delete_msgs_interval = 1
+        self.delete_msgs_current = 0
         self.silent_mode = False
+        self.msg_filter = False
 
 
 def get_user_mention(user, chat_id=None):
@@ -110,7 +113,7 @@ def send_verbose_message(chat_id, text, message_id, **kwargs):
 bot = BotHandler(os.environ['TOKEN'])
 bot_info = None
 chats = dict()
-# admins = [145967250, 126751055, 172210439]
+admins = [145967250, 126751055, 172210439]
 handlerug = 145967250
 one_day = 86400
 
@@ -171,9 +174,12 @@ def main():
 
             if isinstance(chats[chat_id].delete_msgs_from, int):
                 if author['id'] == chats[chat_id].delete_msgs_from:
-                    bot.delete_message(chat_id, message['message_id'])
-                    new_offset = last_update_id + 1
-                    continue
+                    chats[chat_id].delete_msgs_current += 1
+                    if chats[chat_id].delete_msgs_current >= chats[chat_id].delete_msgs_interval:
+                        bot.delete_message(chat_id, message['message_id'])
+                        chats[chat_id].delete_msgs_current = 0
+                        new_offset = last_update_id + 1
+                        continue
 
             if 'new_chat_members' in message:
                 if chats[chat_id].is_chatbot:
@@ -193,7 +199,8 @@ def main():
             if 'text' in message:
                 message_text = message['text'].lower()
 
-                if (u"далер" in message_text or
+                if (chats[chat_id].msg_filter == True and
+                   (u"далер" in message_text or
                     u"дaлеp" in message_text or
                     u"дaлер" in message_text or
                     u"далеp" in message_text or
@@ -204,37 +211,36 @@ def main():
                     u"d a l e r" in message_text or
                     u"daler" in message_text or
                     u"dalertalk" in message_text or
-                    u"днолер" in message_text or
-                    u"нердфокс" in message_text or
-                    u"нерд" in message_text or
-                    u"nerdfox" in message_text or
-                    u"nerd" in message_text or
-                    u"денис" in message_text or
-                    u"denis" in message_text or
-                    u"фигм" in message_text or
-                    u"хуигм" in message_text or
-                    u"фигм" in message_text or
-                    u"вигм" in message_text or
-                    u"вигм" in message_text or
-                    u"figm" in message_text or
-                    u"figм" in message_text or
-                    u"figm" in message_text or
-                    u"figм" in message_text or
-                    u"скетч" in message_text or
-                    u"хуетч" in message_text or
-                    u"окунь" in message_text or
-                    u"окунев" in message_text or
-                    u"cкeтч" in message_text or
-                    u"cкетч" in message_text or
-                    u"скeтч" in message_text or
-                    u"скеtч" in message_text or
-                    u"sketch" in message_text or
-                    u"инвижон" in message_text or
-                    u"invision" in message_text or
-                    u"фреймер" in message_text or
-                    u"framer" in message_text):
-                    pass
-                    # bot.delete_message(chat_id, message['message_id'])
+                    u"днолер" in message_text)):
+                    # u"нердфокс" in message_text or
+                    # u"нерд" in message_text or
+                    # u"nerdfox" in message_text or
+                    # u"nerd" in message_text or
+                    # u"денис" in message_text or
+                    # u"denis" in message_text or
+                    # u"фигм" in message_text or
+                    # u"хуигм" in message_text or
+                    # u"фигм" in message_text or
+                    # u"вигм" in message_text or
+                    # u"вигм" in message_text or
+                    # u"figm" in message_text or
+                    # u"figм" in message_text or
+                    # u"figm" in message_text or
+                    # u"figм" in message_text or
+                    # u"скетч" in message_text or
+                    # u"хуетч" in message_text or
+                    # u"окунь" in message_text or
+                    # u"окунев" in message_text or
+                    # u"cкeтч" in message_text or
+                    # u"cкетч" in message_text or
+                    # u"скeтч" in message_text or
+                    # u"скеtч" in message_text or
+                    # u"sketch" in message_text or
+                    # u"инвижон" in message_text or
+                    # u"invision" in message_text or
+                    # u"фреймер" in message_text or
+                    # u"framer" in message_text)):
+                    bot.delete_message(chat_id, message['message_id'])
                     # bot.restrict_chat_member(chat_id, author['id'], one_day, False, False, False, False)
                     # bot.send_message(chat_id, u"Бан {}! Это чат по фотошопу!".format(get_user_mention(author)), reply_to_message_id=message['message_id'])
 
@@ -363,7 +369,7 @@ def main():
                 elif message_text.startswith('/delete_msgs_from'):
                     command_params = message_text.split()[1:]
                     if len(command_params) > 0:
-                        if author['id'] == handlerug:
+                        if author['id'] in admins:
                             if command_params[0] == u'stop':
                                 chats[chat_id].delete_msgs_from = False
                                 bot.send_message(chat_id, u'Удаление сообщений *выключено*.')
@@ -384,12 +390,47 @@ def main():
                             if chats[chat_id].is_chatbot:
                                 bot.send_message(chat_id, u'пошел нахуй')
                             else:
-                                bot.send_message(chat_id, u'Вы *не handlerug*. Я вам не верю :)')
+                                bot.send_message(chat_id, u'Вы *не избранный администратор*.')
                     else:
                         if chats[chat_id].delete_msgs_from == False:
                             bot.send_message(chat_id, u'В данный момент удаление сообщений *выключено*.')
                         else:
                             bot.send_message(chat_id, u'В данный момент удаление сообщений *включено* для {}.'.format(get_user_mention(chats[chat_id].delete_msgs_from, chat_id)))
+
+                elif message_text.startswith('/delete_msgs_interval'):
+                    command_params = message_text.split()[1:]
+                    if len(command_params) > 0:
+                        if author['id'] in admins:
+                            chats[chat_id].delete_msgs_interval = int(command_params[0])
+                            send_verbose_message(chat_id, u'Интервал удаления сообщений установлен в *{}* сообщений.'.format(chats[chat_id].limit), message['message_id'])
+                        else:
+                            if chats[chat_id].is_chatbot:
+                                bot.send_message(chat_id, u'пошел нахуй')
+                            else:
+                                bot.send_message(chat_id, u'Вы *не избранный администратор*.')
+                    else:
+                        bot.send_message(chat_id, u'В данный момент интервал удаления сообщений установлен в *{}* сообщений.'.format(chats[chat_id].limit))
+
+                elif message_text.startswith('/msg_filter'):
+                    command_params = message_text.split()[1:]
+                    if len(command_params) > 0:
+                        if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator"):
+                            if command_params[0] == u'1':
+                                chats[chat_id].msg_filter = True
+                                send_verbose_message(chat_id, u'Фильтр по сообщениям Далера *включен*.', message['message_id'])
+                            elif command_params[0] == u'0':
+                                chats[chat_id].msg_filter = False
+                                send_verbose_message(chat_id, u'Фильтр по сообщениям Далера *выключен*.', message['message_id'])
+                        else:
+                            if chats[chat_id].is_chatbot:
+                                bot.send_message(chat_id, u'пошел нахуй')
+                            else:
+                                bot.send_message(chat_id, u'Вы *не администратор* данного чата.')
+                    else:
+                        if chats[chat_id].is_restricting:
+                            bot.send_message(chat_id, u'В данный момент фильтр по сообщениям *включен*.')
+                        else:
+                            bot.send_message(chat_id, u'В данный момент фильтр по сообщениям *выключен*.')
 
                 elif message_text.startswith('/silent_mode'):
                     command_params = message_text.split()[1:]
