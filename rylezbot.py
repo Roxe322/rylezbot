@@ -80,6 +80,7 @@ class Chat:
         self.is_restricting = False
         self.limit = 5
         self.is_chatbot = False
+        self.is_ignoring_admins = True
 
     def get_user_mention(self, user):
         self.users[user['id']] = user
@@ -92,7 +93,8 @@ class Chat:
 bot = BotHandler(os.environ['TOKEN'])
 bot_info = None
 chats = dict()
-admins = [145967250, 126751055, 172210439]
+# admins = [145967250, 126751055, 172210439]
+admins = [145967250]
 one_day = 86400
 
 
@@ -177,10 +179,39 @@ def main():
                     u"d a l e r" in message_text or
                     u"daler" in message_text or
                     u"dalertalk" in message_text or
-                    u"днолер" in message_text):
-                    bot.delete_message(chat_id, message['message_id'])
-                    # bot.restrict_chat_member(chat_id, author['id'], 3 * one_day, False, False, False, False)
-                    # bot.send_message(chat_id, u"Не надо так шутить, {}. Теперь ты не можешь писать сообщения 3 дня.".format(chats[chat_id].get_user_mention(author)), reply_to_message_id=message['message_id'])
+                    u"днолер" in message_text or
+                    u"нердфокс" in message_text or
+                    u"нерд" in message_text or
+                    u"nerdfox" in message_text or
+                    u"nerd" in message_text or
+                    u"денис" in message_text or
+                    u"denis" in message_text or
+                    u"фигм" in message_text or
+                    u"хуигм" in message_text or
+                    u"фигм" in message_text or
+                    u"вигм" in message_text or
+                    u"вигм" in message_text or
+                    u"figm" in message_text or
+                    u"figм" in message_text or
+                    u"figm" in message_text or
+                    u"figм" in message_text or
+                    u"скетч" in message_text or
+                    u"хуетч" in message_text or
+                    u"окунь" in message_text or
+                    u"окунев" in message_text or
+                    u"cкeтч" in message_text or
+                    u"cкетч" in message_text or
+                    u"скeтч" in message_text or
+                    u"скеtч" in message_text or
+                    u"sketch" in message_text or
+                    u"инвижон" in message_text or
+                    u"invision" in message_text or
+                    u"фреймер" in message_text or
+                    u"framer" in message_text):
+                    pass
+                    # bot.delete_message(chat_id, message['message_id'])
+                    # bot.restrict_chat_member(chat_id, author['id'], one_day, False, False, False, False)
+                    # bot.send_message(chat_id, u"Бан {}! Это чат по фотошопу!".format(chats[chat_id].get_user_mention(author)), reply_to_message_id=message['message_id'])
 
                 if chats[chat_id].is_chatbot:
                     if ('reply_to_message' in message and
@@ -283,11 +314,32 @@ def main():
                         else:
                             bot.send_message(chat_id, u'В данный момент режим чатбота *выключен*.')
 
+                elif message_text.startswith('/ignore_admins'):
+                    command_params = message_text.split()[1:]
+                    if len(command_params) > 0:
+                        if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator"):
+                            if command_params[0] == u'1':
+                                chats[chat_id].is_ignoring_admins = True
+                                bot.send_message(chat_id, u'Игнорирование админов *включено*.')
+                            elif command_params[0] == u'0':
+                                chats[chat_id].is_ignoring_admins = False
+                                bot.send_message(chat_id, u'Игнорирование админов *выключено*.')
+                        else:
+                            if chats[chat_id].is_chatbot:
+                                bot.send_message(chat_id, u'пошел нахуй')
+                            else:
+                                bot.send_message(chat_id, u'Вы *не администратор* данного чата.')
+                    else:
+                        if chats[chat_id].is_ignoring_admins:
+                            bot.send_message(chat_id, u'В данный момент игнорирование админов *включено*.')
+                        else:
+                            bot.send_message(chat_id, u'В данный момент игнорирование админов *выключено*.')
+
                 was_previous_sticker = False
 
             elif 'sticker' in message:
 
-                if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator"):
+                if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator") and chats[chat_id].is_ignoring_admins:
                     was_previous_sticker = True
                     new_offset = last_update_id + 1
                     continue
