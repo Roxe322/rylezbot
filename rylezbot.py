@@ -81,27 +81,44 @@ class Chat:
         self.limit = 5
         self.is_chatbot = False
         self.is_ignoring_admins = True
+        self.delete_msgs_from = False
+        self.silent_mode = False
 
-    def get_user_mention(self, user):
-        self.users[user['id']] = user
-        if 'username' in user:
-            return "@" + user['username']
-        elif 'first_name' in user:
-            return user['first_name']
+
+def get_user_mention(user, chat_id=None):
+    if isinstance(user, int):
+        if isinstance(chat_id, int):
+            for key, value in chats[chat_id].users.items():
+                if value['id'] == user:
+                    user = value
+            if isinstance(user, int):
+                user = bot.get_chat_member(chat_id, key)
+        else:
+            return None
+    if 'username' in user:
+        return "@" + user['username']
+    elif 'first_name' in user:
+        return user['first_name']
+
+def send_verbose_message(chat_id, text, message_id, **kwargs):
+    if chats[chat_id].silent_mode == False:
+        bot.send_message(chat_id, text, **kwargs)
+    else:
+        bot.delete_message(chat_id, message_id)
 
 
 bot = BotHandler(os.environ['TOKEN'])
 bot_info = None
 chats = dict()
 # admins = [145967250, 126751055, 172210439]
-admins = [145967250]
+handlerug = 145967250
 one_day = 86400
 
 
 def restricting_mode(chat_id, message):
     author = message['from']
     sticker = message['sticker']
-    author_name = chats[chat_id].get_user_mention(author)
+    author_name = get_user_mention(author)
 
     if not author['id'] in chats[chat_id].stats:
         chats[chat_id].stats[author['id']] = 1
@@ -149,6 +166,14 @@ def main():
 
             if not chat_id in chats.keys():
                 chats[chat_id] = Chat()
+
+            chats[chat_id].users[author['id']] = author
+
+            if isinstance(chats[chat_id].delete_msgs_from, int):
+                if author['id'] == chats[chat_id].delete_msgs_from:
+                    bot.delete_message(chat_id, message['message_id'])
+                    new_offset = last_update_id + 1
+                    continue
 
             if 'new_chat_members' in message:
                 if chats[chat_id].is_chatbot:
@@ -211,7 +236,7 @@ def main():
                     pass
                     # bot.delete_message(chat_id, message['message_id'])
                     # bot.restrict_chat_member(chat_id, author['id'], one_day, False, False, False, False)
-                    # bot.send_message(chat_id, u"Бан {}! Это чат по фотошопу!".format(chats[chat_id].get_user_mention(author)), reply_to_message_id=message['message_id'])
+                    # bot.send_message(chat_id, u"Бан {}! Это чат по фотошопу!".format(get_user_mention(author)), reply_to_message_id=message['message_id'])
 
                 if chats[chat_id].is_chatbot:
                     if ('reply_to_message' in message and
@@ -263,7 +288,7 @@ def main():
                     if len(command_params) > 0:
                         if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator"):
                             chats[chat_id].limit = int(command_params[0])
-                            bot.send_message(chat_id, u'Лимит стикеров установлен в *{}* стикеров.'.format(chats[chat_id].limit))
+                            send_verbose_message(chat_id, u'Лимит стикеров установлен в *{}* стикеров.'.format(chats[chat_id].limit), message['message_id'])
                         else:
                             if chats[chat_id].is_chatbot:
                                 bot.send_message(chat_id, u'пошел нахуй')
@@ -278,10 +303,10 @@ def main():
                         if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator"):
                             if command_params[0] == u'1':
                                 chats[chat_id].is_restricting = True
-                                bot.send_message(chat_id, u'Ограничивающий режим *включен*.')
+                                send_verbose_message(chat_id, u'Ограничивающий режим *включен*.', message['message_id'])
                             elif command_params[0] == u'0':
                                 chats[chat_id].is_restricting = False
-                                bot.send_message(chat_id, u'Ограничивающий режим *выключен*.')
+                                send_verbose_message(chat_id, u'Ограничивающий режим *выключен*.', message['message_id'])
                         else:
                             if chats[chat_id].is_chatbot:
                                 bot.send_message(chat_id, u'пошел нахуй')
@@ -299,10 +324,10 @@ def main():
                         if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator"):
                             if command_params[0] == u'1':
                                 chats[chat_id].is_chatbot = True
-                                bot.send_message(chat_id, u'Режим чатбота *включен*.')
+                                send_verbose_message(chat_id, u'Режим чатбота *включен*.', message['message_id'])
                             elif command_params[0] == u'0':
                                 chats[chat_id].is_chatbot = False
-                                bot.send_message(chat_id, u'Режим чатбота *выключен*.')
+                                send_verbose_message(chat_id, u'Режим чатбота *выключен*.', message['message_id'])
                         else:
                             if chats[chat_id].is_chatbot:
                                 bot.send_message(chat_id, u'пошел нахуй')
@@ -320,10 +345,10 @@ def main():
                         if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator"):
                             if command_params[0] == u'1':
                                 chats[chat_id].is_ignoring_admins = True
-                                bot.send_message(chat_id, u'Игнорирование админов *включено*.')
+                                send_verbose_message(chat_id, u'Игнорирование админов *включено*.', message['message_id'])
                             elif command_params[0] == u'0':
                                 chats[chat_id].is_ignoring_admins = False
-                                bot.send_message(chat_id, u'Игнорирование админов *выключено*.')
+                                send_verbose_message(chat_id, u'Игнорирование админов *выключено*.', message['message_id'])
                         else:
                             if chats[chat_id].is_chatbot:
                                 bot.send_message(chat_id, u'пошел нахуй')
@@ -334,6 +359,58 @@ def main():
                             bot.send_message(chat_id, u'В данный момент игнорирование админов *включено*.')
                         else:
                             bot.send_message(chat_id, u'В данный момент игнорирование админов *выключено*.')
+
+                elif message_text.startswith('/delete_msgs_from'):
+                    command_params = message_text.split()[1:]
+                    if len(command_params) > 0:
+                        if author['id'] == handlerug:
+                            if command_params[0] == u'stop':
+                                chats[chat_id].delete_msgs_from = False
+                                bot.send_message(chat_id, u'Удаление сообщений *выключено*.')
+                            elif command_params[0]:
+                                flag = False
+                                for key, value in chats[chat_id].users.items():
+                                    if 'username' in value:
+                                        if value['username'] == command_params[0]:
+                                            chats[chat_id].delete_msgs_from = key
+                                            flag = True
+                                            send_verbose_message(chat_id, u'Удаление сообщений *включено* для {}.'.format(get_user_mention(key, chat_id)), message['message_id'])
+                                            break
+                                if flag == False:
+                                    send_verbose_message(chat_id, u'Данного пользователя пока нет в базе данных.', message['message_id'])
+                            else:
+                                send_verbose_message(chat_id, u'Неправильный параметр команды /delete_msgs_from.', message['message_id'])
+                        else:
+                            if chats[chat_id].is_chatbot:
+                                bot.send_message(chat_id, u'пошел нахуй')
+                            else:
+                                bot.send_message(chat_id, u'Вы *не handlerug*. Я вам не верю :)')
+                    else:
+                        if chats[chat_id].delete_msgs_from == False:
+                            bot.send_message(chat_id, u'В данный момент удаление сообщений *выключено*.')
+                        else:
+                            bot.send_message(chat_id, u'В данный момент удаление сообщений *включено* для {}.'.format(get_user_mention(chats[chat_id].delete_msgs_from, chat_id)))
+
+                elif message_text.startswith('/silent_mode'):
+                    command_params = message_text.split()[1:]
+                    if len(command_params) > 0:
+                        if bot.get_chat_member(chat_id, author['id'])['status'] in (u"creator", u"administrator"):
+                            if command_params[0] == u'1':
+                                chats[chat_id].silent_mode = True
+                                bot.delete_message(chat_id, message['message_id'])
+                            elif command_params[0] == u'0':
+                                chats[chat_id].silent_mode = False
+                                bot.send_message(chat_id, u'Тихий режим *выключен*.')
+                        else:
+                            if chats[chat_id].is_chatbot:
+                                bot.send_message(chat_id, u'пошел нахуй')
+                            else:
+                                bot.send_message(chat_id, u'Вы *не администратор* данного чата.')
+                    else:
+                        if chats[chat_id].silent_mode:
+                            bot.send_message(chat_id, u'В данный момент тихий режим *включен*.')
+                        else:
+                            bot.send_message(chat_id, u'В данный момент тихий режим *выключен*.')
 
                 was_previous_sticker = False
 
