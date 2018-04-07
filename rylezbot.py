@@ -150,7 +150,7 @@ def main():
     while True:
         t = time.gmtime()
         if t.tm_hour == 13 and t.tm_min < 1:
-            stats.clear()
+            chats.clear()
             continue
 
         last_update = bot.get_last_update(new_offset)
