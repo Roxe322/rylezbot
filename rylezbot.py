@@ -17,18 +17,14 @@ class BotHandler:
         result_json = resp.json()['result']
         return result_json
 
-    def get_updates(self, offset=None, timeout=1):
+    def get_updates(self, offset=None, timeout=20):
         method = 'getUpdates'
         params = {'timeout': timeout, 'offset': offset}
         resp = requests.get(self.api_url + method, params)
-        if not 'result' in resp.json():
-            print(u"!!! ATTENTION !!!\n")
-            print(resp.json())
-            exit()
         result_json = resp.json()['result']
         return result_json
 
-    def get_last_update(self, offset=None, timeout=1):
+    def get_last_update(self, offset=None, timeout=20):
         get_result = self.get_updates(offset, timeout)
 
         if len(get_result) > 0:
@@ -80,7 +76,7 @@ class Chat:
         self.is_restricting = False
         self.limit = 5
         self.is_chatbot = False
-        self.is_ignoring_admins = True
+        self.is_ignoring_admins = False
         self.delete_msgs_from = False
         self.delete_msgs_interval = 1
         self.delete_msgs_current = 0
@@ -150,7 +146,8 @@ def main():
     while True:
         t = time.gmtime()
         if t.tm_hour == 13 and t.tm_min < 1:
-            chats.clear()
+            for key, value in chats.items():
+                value.stats.clear()
             continue
 
         last_update = bot.get_last_update(new_offset)
