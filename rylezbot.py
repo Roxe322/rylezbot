@@ -264,25 +264,28 @@ def main():
                           u"фигма"     in message_text):
                         bot.send_message(chat_id, u"Молодца!", reply_to_message_id=message['message_id'])
 
-                if message_text.startswith('/start'):
+                if message_text.startswith('/start') or message_text.startswith('/help'):
                     bot.send_message(
                         chat_id,
-                        u'Бот, который поможет сохранить покой в чате (нет).\n@handlerugbots\nПо вопросам обращайтесь к @handlerug'
+                        u'Бот, который поможет сохранить покой в чате (нет).\nПо вопросам обращайтесь к @handlerug'
                     )
 
                 elif message_text.startswith('/stats'):
                     if chats[chat_id].is_restricting:
-                        stats_text = u'*Статистика по отправителям стикеров:*\n\n'
-                        i = 1
-                        # for key, value in sorted(stats, key=stats.get, reverse=True):
-                        # for key, value in sorted(chats[chat_id].stats.iteritems(), key=operator.itemgetter(1), reverse=True):
-                        for key, value in stats.items():
-                            stats_text += u"{}. {} — {}/{} стикеров".format(i, chats[chat_id].users[key], value, chats[chat_id].limit)
-                            if chats[chat_id].limit - value <= 0:
-                                stats_text += u' (ограничен)'
-                            stats_text += '\n'
-                            i += 1
-                        bot.send_message(chat_id, stats_text)
+                        if len(chats[chat_id].stats) == 0:
+                            bot.send_message(chat_id, u'Пока еще никто не отправил ни один стикер.')
+                        else:
+                            stats_text = u'*Статистика по отправителям стикеров:*\n\n'
+                            i = 1
+                            d = chats[chat_id].stats
+                            s = [(k, d[k]) for k in sorted(d, key=d.get, reverse=True)]
+                            for key, value in s:
+                                stats_text += u"{number}. {user[first_name]} — {current}/{limit} стикеров".format(number=i, user=chats[chat_id].users[key], current=value, limit=chats[chat_id].limit)
+                                if chats[chat_id].limit - value <= 0:
+                                    stats_text += u' (ограничен)'
+                                stats_text += '\n'
+                                i += 1
+                            bot.send_message(chat_id, stats_text)
                     else:
                         bot.send_message(chat_id, u'В данный момент *нет статистики*. Чтобы включить статистику, переключите бота в *ограничивающий режим*.')
 
